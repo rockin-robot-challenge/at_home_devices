@@ -29,6 +29,7 @@
 #include <roah_devices/Percentage.h>
 
 #include "device_ids.h"
+#include "devices_socket.h"
 
 
 
@@ -45,21 +46,25 @@ class BoolSwitch
     ServiceServer on_srv_;
     ServiceServer off_srv_;
     boost::function<void (int32_t) > setter_;
+    bool state_;
 
     bool set (roah_devices::Bool::Request& req, roah_devices::Bool::Response& res)
     {
+      state_ = req.data;
       setter_ (req.data ? 1 : 0);
       return true;
     }
 
     bool on (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
+      state_ = true;
       setter_ (1);
       return true;
     }
 
     bool off (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
+      state_ = false;
       setter_ (0);
       return true;
     }
@@ -72,7 +77,13 @@ class BoolSwitch
       , on_srv_ (nh.advertiseService ("/devices/" + name + "/on", &BoolSwitch::on, this))
       , off_srv_ (nh.advertiseService ("/devices/" + name + "/off", &BoolSwitch::off, this))
       , setter_ (setter)
+      , state_ (false)
     {
+    }
+
+    void set_current()
+    {
+      setter_ (state_ ? 1 : 0);
     }
 };
 
@@ -84,6 +95,7 @@ class PercentageSwitch
     ServiceServer max_srv_;
     ServiceServer min_srv_;
     boost::function<void (int32_t) > setter_;
+    uint8_t state_;
 
     bool set (roah_devices::Percentage::Request& req, roah_devices::Percentage::Response& res)
     {
@@ -91,18 +103,21 @@ class PercentageSwitch
         return false;
       }
 
+      state_ = req.data;
       setter_ (req.data);
       return true;
     }
 
     bool max (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
+      state_ = 100;
       setter_ (100);
       return true;
     }
 
     bool min (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
+      state_ = 0;
       setter_ (0);
       return true;
     }
@@ -115,7 +130,13 @@ class PercentageSwitch
       , max_srv_ (nh.advertiseService ("/devices/" + name + "/max", &PercentageSwitch::max, this))
       , min_srv_ (nh.advertiseService ("/devices/" + name + "/min", &PercentageSwitch::min, this))
       , setter_ (setter)
+      , state_ (0)
     {
+    }
+
+    void set_current()
+    {
+      setter_ (state_);
     }
 };
 
@@ -125,9 +146,6 @@ class RoahDevices
 {
     NodeHandle nh_;
 
-    Publisher devices_pub_;
-    Publisher bell_pub_;
-
     BoolSwitch switch_1_;
     BoolSwitch switch_2_;
     BoolSwitch switch_3_;
@@ -136,137 +154,114 @@ class RoahDevices
 
     io_service io_service_;
     tcp::socket socket_;
+    boost::mutex write_mutex_;
     boost::thread thread_;
 
-    void write_byte (uint8_t val)
+    uint8_t command_;
+
+    void
+    set_int (string const& arg0,
+             int32_t arg1)
     {
-      if (! write (socket_, buffer (&val, sizeof (val)))) {
-        throw exception();
+      boost::lock_guard<boost::mutex> _ (write_mutex_);
+      try {
+        if (! socket_.is_open()) {
+          return;
+        }
+
+        sync_write_byte (socket_, 'I');
+        sync_write_string (socket_, arg0);
+        sync_write_long (socket_, arg1);
+        ROS_DEBUG_STREAM ("setInt(\"" << arg0 << "\", " << arg1 << ")");
       }
+      catch (...) {}
     }
 
-    void write_string (string const& val)
+    void
+    start_read()
     {
-      uint16_t length = val.size();
-      length = boost::asio::detail::socket_ops::host_to_network_short (length);
-      if (! write (socket_, buffer (&length, sizeof (length)))) {
-        throw exception();
-      }
+      async_read (socket_,
+                  buffer (&command_, 1),
+                  boost::bind (&RoahDevices::handle_read, this,
+                               boost::asio::placeholders::error));
+    }
 
-      if (val.size() == 0) {
+    void
+    handle_read (const boost::system::error_code& error)
+    {
+      if (error) {
+        cerr << "Some error code in handle_read" << endl << flush;
+        io_service_.stop();
         return;
       }
 
-      vector<string::value_type> content (val.begin(), val.end());
-      content.resize (val.size());
-      if (! write (socket_, buffer (content))) {
-        throw exception();
+      if (command_ != 'I') {
+        cerr << "UNKNOWN COMMAND value " << static_cast<int> (command_) << endl << flush;
+        io_service_.stop();
+        return;
       }
-    }
 
-    void write_int (int32_t val)
-    {
-      val = boost::asio::detail::socket_ops::host_to_network_long (val);
-      if (! write (socket_, buffer (&val, sizeof (val)))) {
-        throw exception();
-      }
-    }
-
-    void set_int (string const& arg0, int32_t arg1)
-    {
       try {
-        write_byte ('I');
-        write_string (arg0);
-        write_int (arg1);
-        ROS_DEBUG_STREAM ("setInt(\"" << arg0 << "\", " << arg1 << ")");
-      }
-      catch (exception) {}
-    }
-
-    uint8_t read_byte()
-    {
-      uint8_t val;
-      if (! read (socket_, buffer (&val, sizeof (val)))) {
-        throw exception();
-      }
-      return val;
-    }
-
-    string read_string()
-    {
-      uint16_t length;
-      if (! read (socket_, buffer (&length, sizeof (length)))) {
-        throw exception();
-      }
-      length = boost::asio::detail::socket_ops::network_to_host_short (length);
-
-      if (length == 0) {
-        return "";
-      }
-
-      vector<string::value_type> content (static_cast<size_t> (length));
-      if (! read (socket_, buffer (content))) {
-        throw exception();
-      }
-
-      return string (content.begin(), content.end());
-    }
-
-    int32_t read_int()
-    {
-      int32_t val;
-      if (! read (socket_, buffer (&val, sizeof (val)))) {
-        throw exception();
-      }
-      return boost::asio::detail::socket_ops::network_to_host_long (val);
-    }
-
-    void process_command()
-    {
-      uint8_t command_byte = read_byte();
-
-      switch (command_byte) {
-        case 'E': {
-          string arg0 = read_string();
-          ROS_ERROR_STREAM ("Cannot connect to server: already a connection from: " << arg0);
-          // TODO keep trying
-          abort();
+        switch (command_) {
+          case 'E': {
+            string arg0 = sync_read_string (socket_);
+            ROS_ERROR_STREAM ("Cannot connect to server: already a connection from: " << arg0);
+            // TODO keep trying
+            abort();
+          }
+          break;
+          case '1': {
+            string arg0 = sync_read_string (socket_);
+            int arg1 = sync_read_long (socket_);
+            int arg2 = sync_read_long (socket_);
+            ROS_DEBUG_STREAM ("notifyChanges(\"" << arg0 << "\", " << arg1 << ", " << arg2 << ")");
+          }
+          break;
+          case '2': {
+            char arg0 = sync_read_byte (socket_);
+            string arg1 = sync_read_string (socket_);
+            string arg2 = sync_read_string (socket_);
+            ROS_DEBUG_STREAM ("notifyChanges(" << (arg0 == 'N' ? "NEW" : arg0 == 'E' ? "EDIT" : arg0 == 'D' ? "DELETE" : "UNKNOWN") << ", \"" << arg1 << "\", \"" << arg2 << "\")");
+          }
+          break;
+          default:
+            ROS_FATAL_STREAM ("Received unknown command value " << ( (int) command_) << " char " << ( (char) command_));
+            abort();
         }
-        break;
-        case '1': {
-          string arg0 = read_string();
-          int arg1 = read_int();
-          int arg2 = read_int();
-          ROS_DEBUG_STREAM ("notifyChanges(\"" << arg0 << "\", " << arg1 << ", " << arg2 << ")");
-        }
-        break;
-        case '2': {
-          char arg0 = read_byte();
-          string arg1 = read_string();
-          string arg2 = read_string();
-          ROS_DEBUG_STREAM ("notifyChanges(" << (arg0 == 'N' ? "NEW" : arg0 == 'E' ? "EDIT" : arg0 == 'D' ? "DELETE" : "UNKNOWN") << ", \"" << arg1 << "\", \"" << arg2 << "\")");
-        }
-        break;
-        default:
-          ROS_FATAL_STREAM ("Received unknown command value " << ( (int) command_byte) << " char " << ( (char) command_byte));
-          abort();
       }
+      catch (...) {
+        cerr << "Some error in sync reads" << endl << flush;
+        io_service_.stop();
+        return;
+      }
+
+      start_read();
     }
 
     void run_thread()
     {
-      string smartif_host;
-      param::param<string> ("~smartif_host", smartif_host, "192.168.1.56");
-      tcp::endpoint endpoint (ip::address::from_string (smartif_host), 6665);
-      socket_.connect (endpoint);
-      ROS_DEBUG_STREAM ("Connected to " << endpoint);
-      try {
-        while (ok()) {
-          process_command();
+      while (ok()) {
+        string smartif_host;
+        param::param<string> ("~smartif_host", smartif_host, "192.168.1.56");
+        tcp::endpoint endpoint (ip::address::from_string (smartif_host), 6665);
+        try {
+          socket_.connect (endpoint);
+          ROS_DEBUG_STREAM ("Connected to " << endpoint);
+          start_read();
+          switch_1_.set_current();
+          switch_2_.set_current();
+          switch_3_.set_current();
+          dimmer_.set_current();
+          blinds_.set_current();
+          io_service_.run();
+        }
+        catch (...) {}
+        socket_.close();
+        io_service_.reset();
+        if (ok()) {
+          Duration (0.2).sleep();
         }
       }
-      catch (exception) {}
-      socket_.close();
     }
 
   public:
@@ -285,7 +280,8 @@ class RoahDevices
 
     ~RoahDevices()
     {
-      socket_.shutdown (socket_base::shutdown_both);
+      // socket_.shutdown (socket_base::shutdown_both);
+      io_service_.stop();
       thread_.join();
     }
 };
