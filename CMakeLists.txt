@@ -58,8 +58,8 @@ add_executable(roah_devices src/roah_devices.cpp)
 add_dependencies(roah_devices roah_devices_generate_messages_cpp)
 target_link_libraries(roah_devices ${catkin_LIBRARIES})
 
-#add_executable(dummy_server src/dummy_server.cpp)
-#target_link_libraries(dummy_server ${catkin_LIBRARIES})
+add_executable(dummy_server src/dummy_server.cpp)
+target_link_libraries(dummy_server ${catkin_LIBRARIES})
 
 #############
 ## Install ##
