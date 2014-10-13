@@ -8,7 +8,7 @@ the RoCKIn@Home Referee, Scoring and Benchmarking Box.
 
 Here are provided:
 
-- The roan_devices node, that provides ROS services and
+- The roah_devices node, that provides ROS services and
 topics to control the devices;
 - A dummy server so that the real devices are not needed
 for testing.
@@ -29,7 +29,7 @@ Compile as a normal ROS package in your Catkin workspace.
 
 ## Running
 
-Run the ROS node roah_devices or use the launch file for a quick test:
+Run the ROS node `roah_devices` or use the launch file for a quick test:
 ```bash
 roslaunch --screen roah_devices control_dummy.launch
 ```
@@ -74,13 +74,12 @@ Or from C++ code:
 #include "roah_devices/Bool.h"
 #include "roah_devices/Percentage.h"
 
-
-
 int main (int argc, char** argv)
 {
   ros::init (argc, argv, "try_service_call");
   ros::NodeHandle nh;
 
+  // Call /devices/switch_2/on
   if (ros::service::waitForService ("/devices/switch_2/on", 100)) {
     std_srvs::Empty s;
     if (! ros::service::call ("/devices/switch_2/on", s)) {
@@ -91,6 +90,7 @@ int main (int argc, char** argv)
     ROS_ERROR ("Could not find service");
   }
 
+  // Call /devices/dimmer/set
   if (ros::service::waitForService ("/devices/dimmer/set", 100)) {
     roah_devices::Percentage p;
     p.request.data = 75;
