@@ -195,12 +195,6 @@ class RoahDevices
         return;
       }
 
-      if (command_ != 'I') {
-        cerr << "UNKNOWN COMMAND value " << static_cast<int> (command_) << endl << flush;
-        io_service_.stop();
-        return;
-      }
-
       try {
         switch (command_) {
           case 'E': {
