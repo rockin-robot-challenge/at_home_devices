@@ -1,6 +1,6 @@
 <launch>
 
-  <node pkg="roah_devices" type="dummy_server" name="roah_devices_dummy_server" respawn="true"/>
+  <node pkg="roah_devices" type="dummy_server" name="roah_devices_dummy_server" respawn="true" output="screen"/>
 
   <node pkg="roah_devices" type="roah_devices" name="roah_devices" respawn="true">
     <param name="smartif_host" type="string" value="127.0.0.1"/>

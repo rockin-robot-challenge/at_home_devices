@@ -63,12 +63,12 @@ class DummyServer
     {
       if (! error) {
         if (! connection_socket_) {
-          cout << "Connection accepted from " << lexical_cast<string> (socket->remote_endpoint()) << endl << flush;
+          cout << "DUMMY SERVER: Connection accepted from " << lexical_cast<string> (socket->remote_endpoint()) << endl << flush;
           connection_socket_ = socket;
           start_read();
         }
         else {
-          cout << "Connection REJECTED from " << lexical_cast<string> (socket->remote_endpoint()) << endl << flush;
+          cout << "DUMMY SERVER: Connection REJECTED from " << lexical_cast<string> (socket->remote_endpoint()) << endl << flush;
           shared_ptr<vector<uint8_t> > b = make_shared<vector<uint8_t> >();
           serialize_byte ('E', *b);
           serialize_string (lexical_cast<string> (connection_socket_->remote_endpoint()), *b);
@@ -104,13 +104,13 @@ class DummyServer
     handle_read (const boost::system::error_code& error)
     {
       if (error) {
-        cerr << "Some error code in handle_read" << endl << flush;
+        cerr << "DUMMY SERVER: Some error code in handle_read" << endl << flush;
         connection_socket_.reset();
         return;
       }
 
       if (command_ != 'I') {
-        cerr << "UNKNOWN COMMAND value " << static_cast<int> (command_) << endl << flush;
+        cerr << "DUMMY SERVER: UNKNOWN COMMAND value " << static_cast<int> (command_) << endl << flush;
         connection_socket_.reset();
         return;
       }
@@ -122,7 +122,7 @@ class DummyServer
         arg1 = sync_read_long (*connection_socket_);
       }
       catch (...) {
-        cerr << "Some error in sync reads" << endl << flush;
+        cerr << "DUMMY SERVER: Some error in sync reads" << endl << flush;
         connection_socket_.reset();
         return;
       }
@@ -130,60 +130,60 @@ class DummyServer
       if (arg0 == SWITCH_1_ID) {
         switch (arg1) {
           case 0:
-            cout << "Switch 1 turned OFF" << endl << flush;
+            cout << "DUMMY SERVER: Switch 1 turned OFF" << endl << flush;
             break;
           case 1:
-            cout << "Switch 1 turned ON" << endl << flush;
+            cout << "DUMMY SERVER: Switch 1 turned ON" << endl << flush;
             break;
           default:
-            cerr << "Switch 1 turned to UNKNOWN VALUE " << arg1 << endl << flush;
+            cerr << "DUMMY SERVER: Switch 1 turned to UNKNOWN VALUE " << arg1 << endl << flush;
             break;
         }
       }
       else if (arg0 == SWITCH_2_ID) {
         switch (arg1) {
           case 0:
-            cout << "Switch 2 turned OFF" << endl << flush;
+            cout << "DUMMY SERVER: Switch 2 turned OFF" << endl << flush;
             break;
           case 1:
-            cout << "Switch 2 turned ON" << endl << flush;
+            cout << "DUMMY SERVER: Switch 2 turned ON" << endl << flush;
             break;
           default:
-            cerr << "Switch 2 turned to UNKNOWN VALUE " << arg1 << endl << flush;
+            cerr << "DUMMY SERVER: Switch 2 turned to UNKNOWN VALUE " << arg1 << endl << flush;
             break;
         }
       }
       else if (arg0 == SWITCH_3_ID) {
         switch (arg1) {
           case 0:
-            cout << "Switch 3 turned OFF" << endl << flush;
+            cout << "DUMMY SERVER: Switch 3 turned OFF" << endl << flush;
             break;
           case 1:
-            cout << "Switch 3 turned ON" << endl << flush;
+            cout << "DUMMY SERVER: Switch 3 turned ON" << endl << flush;
             break;
           default:
-            cerr << "Switch 3 turned to UNKNOWN VALUE " << arg1 << endl << flush;
+            cerr << "DUMMY SERVER: Switch 3 turned to UNKNOWN VALUE " << arg1 << endl << flush;
             break;
         }
       }
       else if (arg0 == DIMMER_ID) {
         if ( (arg1 >= 0) && (arg1 <= 100)) {
-          cout << "Dimmer turned to " << arg1 << "%" << endl << flush;
+          cout << "DUMMY SERVER: Dimmer turned to " << arg1 << "%" << endl << flush;
         }
         else {
-          cerr << "Dimmer turned to UNKNOWN VALUE " << arg1 << endl << flush;
+          cerr << "DUMMY SERVER: Dimmer turned to UNKNOWN VALUE " << arg1 << endl << flush;
         }
       }
       else if (arg0 == BLINDS_ID) {
         if ( (arg1 >= 0) && (arg1 <= 100)) {
-          cout << "Blinds turned to " << arg1 << "%" << endl << flush;
+          cout << "DUMMY SERVER: Blinds turned to " << arg1 << "%" << endl << flush;
         }
         else {
-          cerr << "Blinds turned to UNKNOWN VALUE " << arg1 << endl << flush;
+          cerr << "DUMMY SERVER: Blinds turned to UNKNOWN VALUE " << arg1 << endl << flush;
         }
       }
       else {
-        cerr << "Received command for UNKNOWN DEVICE \"" << arg0 << "\"" << endl << flush;
+        cerr << "DUMMY SERVER: Received command for UNKNOWN DEVICE \"" << arg0 << "\"" << endl << flush;
       }
 
       start_read();

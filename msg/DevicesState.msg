@@ -1,6 +1,6 @@
-time ring
-bool switch1
-bool switch2
-bool switch3
-uint8 potentiometer
+time bell
+bool switch_1
+bool switch_2
+bool switch_3
+uint8 dimmer
 uint8 blinds

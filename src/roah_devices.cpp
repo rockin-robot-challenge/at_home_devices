@@ -19,12 +19,15 @@
 
 #include <string>
 
+#include <boost/make_shared.hpp>
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
 
 #include <ros/ros.h>
 
+#include <std_msgs/Empty.h>
 #include <std_srvs/Empty.h>
+#include <roah_devices/DevicesState.h>
 #include <roah_devices/Bool.h>
 #include <roah_devices/Percentage.h>
 
@@ -36,7 +39,62 @@
 using namespace std;
 using namespace ros;
 using namespace boost::asio;
+using boost::make_shared;
 using boost::asio::ip::tcp;
+
+
+
+class Bell
+{
+    Publisher ring_pub_;
+    ServiceServer mock_srv_;
+    boost::function<void () > update_;
+    boost::mutex state_mutex_;
+    Time state_;
+
+    bool mock (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+    {
+      ring();
+      return true;
+    }
+
+  public:
+    Bell (NodeHandle& nh,
+          string const& name,
+          boost::function<void () > update)
+      : ring_pub_ (nh.advertise<std_msgs::Empty> ("/devices/" + name, 1, false))
+      , mock_srv_ (nh.advertiseService ("/devices/" + name + "/mock", &Bell::mock, this))
+      , update_ (update)
+      , state_ (TIME_MIN)
+    {
+    }
+
+    void set_current()
+    {
+      // Nothing
+    }
+
+    Time get_state()
+    {
+      Time ret;
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        ret = state_;
+      }
+      return ret;
+    }
+
+    void ring()
+    {
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        state_ = Time::now();
+      }
+      ring_pub_.publish (make_shared<std_msgs::Empty>());
+
+      update_();
+    }
+};
 
 
 
@@ -45,37 +103,56 @@ class BoolSwitch
     ServiceServer srv_;
     ServiceServer on_srv_;
     ServiceServer off_srv_;
+    boost::function<void () > update_;
     boost::function<void (int32_t) > setter_;
+    boost::mutex state_mutex_;
     bool state_;
 
     bool set (roah_devices::Bool::Request& req, roah_devices::Bool::Response& res)
     {
-      state_ = req.data;
-      setter_ (req.data ? 1 : 0);
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        state_ = req.data;
+        setter_ (req.data ? 1 : 0);
+      }
+
+      update_();
       return true;
     }
 
     bool on (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
-      state_ = true;
-      setter_ (1);
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        state_ = true;
+        setter_ (1);
+      }
+
+      update_();
       return true;
     }
 
     bool off (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
-      state_ = false;
-      setter_ (0);
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        state_ = false;
+        setter_ (0);
+      }
+
+      update_();
       return true;
     }
 
   public:
     BoolSwitch (NodeHandle& nh,
                 string const& name,
+                boost::function<void () > update,
                 boost::function<void (int32_t) > setter)
       : srv_ (nh.advertiseService ("/devices/" + name + "/set", &BoolSwitch::set, this))
       , on_srv_ (nh.advertiseService ("/devices/" + name + "/on", &BoolSwitch::on, this))
       , off_srv_ (nh.advertiseService ("/devices/" + name + "/off", &BoolSwitch::off, this))
+      , update_ (update)
       , setter_ (setter)
       , state_ (false)
     {
@@ -83,7 +160,18 @@ class BoolSwitch
 
     void set_current()
     {
+      boost::lock_guard<boost::mutex> _ (state_mutex_);
       setter_ (state_ ? 1 : 0);
+    }
+
+    bool get_state()
+    {
+      bool ret;
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        ret = state_;
+      }
+      return ret;
     }
 };
 
@@ -94,7 +182,9 @@ class PercentageSwitch
     ServiceServer srv_;
     ServiceServer max_srv_;
     ServiceServer min_srv_;
+    boost::function<void () > update_;
     boost::function<void (int32_t) > setter_;
+    boost::mutex state_mutex_;
     uint8_t state_;
 
     bool set (roah_devices::Percentage::Request& req, roah_devices::Percentage::Response& res)
@@ -103,32 +193,49 @@ class PercentageSwitch
         return false;
       }
 
-      state_ = req.data;
-      setter_ (req.data);
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        state_ = req.data;
+        setter_ (req.data);
+      }
+
+      update_();
       return true;
     }
 
     bool max (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
-      state_ = 100;
-      setter_ (100);
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        state_ = 100;
+        setter_ (100);
+      }
+
+      update_();
       return true;
     }
 
     bool min (std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
     {
-      state_ = 0;
-      setter_ (0);
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        state_ = 0;
+        setter_ (0);
+      }
+
+      update_();
       return true;
     }
 
   public:
     PercentageSwitch (NodeHandle& nh,
                       string const& name,
+                      boost::function<void () > update,
                       boost::function<void (int32_t) > setter)
       : srv_ (nh.advertiseService ("/devices/" + name + "/set", &PercentageSwitch::set, this))
       , max_srv_ (nh.advertiseService ("/devices/" + name + "/max", &PercentageSwitch::max, this))
       , min_srv_ (nh.advertiseService ("/devices/" + name + "/min", &PercentageSwitch::min, this))
+      , update_ (update)
       , setter_ (setter)
       , state_ (0)
     {
@@ -136,7 +243,18 @@ class PercentageSwitch
 
     void set_current()
     {
+      boost::lock_guard<boost::mutex> _ (state_mutex_);
       setter_ (state_);
+    }
+
+    uint8_t get_state()
+    {
+      uint8_t ret;
+      {
+        boost::lock_guard<boost::mutex> _ (state_mutex_);
+        ret = state_;
+      }
+      return ret;
     }
 };
 
@@ -145,7 +263,9 @@ class PercentageSwitch
 class RoahDevices
 {
     NodeHandle nh_;
+    Publisher state_pub_;
 
+    Bell bell_;
     BoolSwitch switch_1_;
     BoolSwitch switch_2_;
     BoolSwitch switch_3_;
@@ -158,6 +278,19 @@ class RoahDevices
     boost::thread thread_;
 
     uint8_t command_;
+
+    void
+    update()
+    {
+      roah_devices::DevicesState::Ptr msg = make_shared<roah_devices::DevicesState>();
+      msg->bell = bell_.get_state();
+      msg->switch_1 = switch_1_.get_state();
+      msg->switch_2 = switch_2_.get_state();
+      msg->switch_3 = switch_3_.get_state();
+      msg->dimmer = dimmer_.get_state();
+      msg-> blinds = blinds_.get_state();
+      state_pub_.publish (msg);
+    }
 
     void
     set_int (string const& arg0,
@@ -242,11 +375,13 @@ class RoahDevices
           socket_.connect (endpoint);
           ROS_DEBUG_STREAM ("Connected to " << endpoint);
           start_read();
+          bell_.set_current();
           switch_1_.set_current();
           switch_2_.set_current();
           switch_3_.set_current();
           dimmer_.set_current();
           blinds_.set_current();
+          update();
           io_service_.run();
         }
         catch (...) {}
@@ -261,11 +396,30 @@ class RoahDevices
   public:
     RoahDevices()
       : nh_()
-      , switch_1_ (nh_, "switch_1", boost::bind (&RoahDevices::set_int, this, SWITCH_1_ID, _1))
-      , switch_2_ (nh_, "switch_2", boost::bind (&RoahDevices::set_int, this, SWITCH_2_ID, _1))
-      , switch_3_ (nh_, "switch_3", boost::bind (&RoahDevices::set_int, this, SWITCH_3_ID, _1))
-      , dimmer_ (nh_, "dimmer", boost::bind (&RoahDevices::set_int, this, DIMMER_ID, _1))
-      , blinds_ (nh_, "blinds", boost::bind (&RoahDevices::set_int, this, BLINDS_ID, _1))
+      , state_pub_ (nh_.advertise<roah_devices::DevicesState> ("/devices/state", 1, true))
+      , bell_ (nh_,
+               "bell",
+               boost::bind (&RoahDevices::update, this))
+      , switch_1_ (nh_,
+                   "switch_1",
+                   boost::bind (&RoahDevices::update, this),
+                   boost::bind (&RoahDevices::set_int, this, SWITCH_1_ID, _1))
+      , switch_2_ (nh_,
+                   "switch_2",
+                   boost::bind (&RoahDevices::update, this),
+                   boost::bind (&RoahDevices::set_int, this, SWITCH_2_ID, _1))
+      , switch_3_ (nh_,
+                   "switch_3",
+                   boost::bind (&RoahDevices::update, this),
+                   boost::bind (&RoahDevices::set_int, this, SWITCH_3_ID, _1))
+      , dimmer_ (nh_,
+                 "dimmer",
+                 boost::bind (&RoahDevices::update, this),
+                 boost::bind (&RoahDevices::set_int, this, DIMMER_ID, _1))
+      , blinds_ (nh_,
+                 "blinds",
+                 boost::bind (&RoahDevices::update, this),
+                 boost::bind (&RoahDevices::set_int, this, BLINDS_ID, _1))
       , io_service_()
       , socket_ (io_service_)
       , thread_ (&RoahDevices::run_thread, this)
