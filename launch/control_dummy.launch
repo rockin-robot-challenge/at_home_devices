@@ -1,0 +1,7 @@
+<launch>
+
+  <include file="$(find roah_devices)/launch/run_dummy.launch"/>
+
+  <node pkg="roah_devices" type="rqt_roah_devices" name="rqt_roah_devices" required="true"/>
+
+</launch>

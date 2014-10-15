@@ -1,0 +1,14 @@
+<library path="lib/librqt_roah_devices">
+
+  <class name="rqt_roah_devices/DevicesControl" type="rqt_roah_devices::DevicesControl" base_class_type="rqt_gui_cpp::Plugin">
+    <description>
+      RoAH Devices Control GUI.
+    </description>
+    <qtgui>
+      <label>RoAH Devices Control</label>
+      <icon type="theme">preferences-system-network</icon>
+      <statustip>Control and monitor the devices state</statustip>
+    </qtgui>
+  </class>
+
+</library>

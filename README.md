@@ -40,6 +40,18 @@ For a quick test with the dummy server, use:
 roslaunch roah_devices run_dummy.launch
 ```
 
+### Using the Control Interface
+
+Use the launch file:
+```bash
+roslaunch roah_devices control_real.launch
+```
+
+For a quick test with the dummy server, use:
+```bash
+roslaunch roah_devices control_dummy.launch
+```
+
 
 ## Using
 
@@ -77,10 +89,10 @@ rosservice call /devices/dimmer/set 50
 
 Or from C++ code:
 ```c++
-#include "ros/ros.h"
-#include "std_srvs/Empty.h"
-#include "roah_devices/Bool.h"
-#include "roah_devices/Percentage.h"
+#include <ros/ros.h>
+#include <std_srvs/Empty.h>
+#include <roah_devices/Bool.h>
+#include <roah_devices/Percentage.h>
 
 int main (int argc, char** argv)
 {
@@ -132,8 +144,8 @@ rostopic echo /devices/bell
 
 Or from C++ code:
 ```c++
-#include "ros/ros.h"
-#include "std_msgs/Empty.h"
+#include <ros/ros.h>
+#include <std_msgs/Empty.h>
 
 void callback(std_msgs::Empty::ConstPtr const& /*msg*/){
   ROS_INFO("The bell was rung!");

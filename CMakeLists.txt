@@ -3,6 +3,8 @@ project(roah_devices)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rqt_gui
+  rqt_gui_cpp
   message_generation
   std_msgs
   std_srvs
@@ -10,6 +12,10 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system thread)
+
+find_package(Qt4 REQUIRED QtCore QtGui)
+include(${QT_USE_FILE})
+
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -30,6 +36,7 @@ generate_messages(
   std_srvs
 )
 
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -40,18 +47,24 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES roah_devices
+INCLUDE_DIRS include
+LIBRARIES rqt_roah_devices
 CATKIN_DEPENDS message_runtime std_msgs std_srvs # roscpp
 #  DEPENDS system_lib
 )
 
+
 ###########
 ## Build ##
 ###########
-
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
+)
+
+add_subdirectory(gen/)
+include_directories(
+  ${INCLUDE_DIRS}
 )
 
 add_executable(roah_devices src/roah_devices.cpp)
@@ -60,6 +73,11 @@ target_link_libraries(roah_devices ${catkin_LIBRARIES})
 
 add_executable(dummy_server src/dummy_server.cpp)
 target_link_libraries(dummy_server ${catkin_LIBRARIES})
+
+add_library(rqt_roah_devices src/devices_control.cpp)
+add_dependencies(rqt_roah_devices roah_devices_generate_messages_cpp)
+target_link_libraries(rqt_roah_devices roah_devices_qt ${QT_LIBRARIES} ${catkin_LIBRARIES})
+
 
 #############
 ## Install ##
@@ -70,17 +88,17 @@ target_link_libraries(dummy_server ${catkin_LIBRARIES})
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+file(GLOB INSTALL_SCRIPTS ${PROJECT_SOURCE_DIR}/scripts/*)
+install(PROGRAMS ${INSTALL_SCRIPTS}
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS roah_devices roah_devices_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS roah_devices rqt_roah_devices
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
@@ -88,13 +106,15 @@ target_link_libraries(dummy_server ${catkin_LIBRARIES})
 #   FILES_MATCHING PATTERN "*.h"
 #   PATTERN ".svn" EXCLUDE
 # )
+install(FILES include/topic_receiver.h
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+file(GLOB LAUNCH_FILES ${PROJECT_SOURCE_DIR}/launch/*.launch)
+install(FILES ${LAUNCH_FILES}
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##
