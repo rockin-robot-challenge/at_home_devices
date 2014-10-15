@@ -21,7 +21,7 @@
 #define __ROAH_DEVICES_TOPIC_RECEIVER_H__
 
 #include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
+#include <boost/thread/locks.hpp>
 
 #include <ros/ros.h>
 
