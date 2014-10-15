@@ -29,6 +29,6 @@ const std::string SWITCH_1_ID = "33";
 const std::string SWITCH_2_ID = "126";
 const std::string SWITCH_3_ID = "0";
 const std::string DIMMER_ID = "14";
-const std::string BLINDS_ID = "41";
+const std::string BLINDS_ID = "0";
 
 #endif
