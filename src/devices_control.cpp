@@ -142,8 +142,12 @@ namespace rqt_roah_devices
       return;
     }
 
+    ui_.dimmer_in->blockSignals (true);
     ui_.dimmer_in->setValue (status->dimmer);
+    ui_.dimmer_in->blockSignals (false);
+    ui_.blinds_in->blockSignals (true);
     ui_.blinds_in->setValue (status->blinds);
+    ui_.blinds_in->blockSignals (false);
   }
 
   void DevicesControl::bell()
