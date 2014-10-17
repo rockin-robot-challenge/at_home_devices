@@ -32,32 +32,13 @@
 #include <roah_devices/Bool.h>
 #include <roah_devices/Percentage.h>
 
+#include <roah_utils.h>
+
 
 
 using namespace std;
 using namespace ros;
 using boost::lexical_cast;
-
-
-
-namespace
-{
-  template<typename T>
-  bool callService (string const& service, T& data)
-  {
-    if (ros::service::waitForService (service, 100)) {
-      if (! ros::service::call (service, data)) {
-        ROS_ERROR ("Error calling service");
-        return false;
-      }
-    }
-    else {
-      ROS_ERROR ("Could not find service");
-      return false;
-    }
-    return true;
-  }
-}
 
 
 
@@ -83,14 +64,8 @@ namespace rqt_roah_devices
     widget_ = new QWidget();
     // extend the widget with all attributes and children from UI file
     ui_.setupUi (widget_);
-
     // add widget to the user interface
     context.addWidget (widget_);
-
-    rcv_.start ("/devices/state", getNodeHandle());
-
-    connect (&update_timer_, SIGNAL (timeout()), this, SLOT (update()));
-    update_timer_.start (200);
 
     connect (ui_.bell_ring, SIGNAL (clicked()), this, SLOT (bell()));
     connect (ui_.switch_1_toggle, SIGNAL (clicked()), this, SLOT (switch_1()));
@@ -98,6 +73,10 @@ namespace rqt_roah_devices
     connect (ui_.switch_3_toggle, SIGNAL (clicked()), this, SLOT (switch_3()));
     connect (ui_.dimmer_in, SIGNAL (valueChanged (int)), this, SLOT (dimmer (int)));
     connect (ui_.blinds_in, SIGNAL (valueChanged (int)), this, SLOT (blinds (int)));
+    rcv_.start ("/devices/state", getNodeHandle());
+
+    connect (&update_timer_, SIGNAL (timeout()), this, SLOT (update()));
+    update_timer_.start (200);
   }
 
   void DevicesControl::shutdownPlugin()
@@ -117,7 +96,7 @@ namespace rqt_roah_devices
     }
 
     if (status->bell != TIME_MIN) {
-      ui_.bell_time->setText (QString::fromStdString (boost::posix_time::to_simple_string (boost::date_time::c_local_adjustor<boost::posix_time::ptime>::utc_to_local (status->bell.toBoost()))));
+      ui_.bell_time->setText (to_qstring (status->bell));
     }
     else {
       ui_.bell_time->setText ("--");
@@ -153,7 +132,7 @@ namespace rqt_roah_devices
   void DevicesControl::bell()
   {
     std_srvs::Empty e;
-    callService ("/devices/bell/mock", e);
+    call_service ("/devices/bell/mock", e);
     last_control_ = Time::now();
   }
 
@@ -162,7 +141,7 @@ namespace rqt_roah_devices
     roah_devices::DevicesState::ConstPtr status = rcv_.last ();
     roah_devices::Bool b;
     b.request.data = ! status->switch_1;
-    callService ("/devices/switch_1/set", b);
+    call_service ("/devices/switch_1/set", b);
     last_control_ = Time::now();
   }
 
@@ -171,7 +150,7 @@ namespace rqt_roah_devices
     roah_devices::DevicesState::ConstPtr status = rcv_.last ();
     roah_devices::Bool b;
     b.request.data = ! status->switch_2;
-    callService ("/devices/switch_2/set", b);
+    call_service ("/devices/switch_2/set", b);
     last_control_ = Time::now();
   }
 
@@ -180,7 +159,7 @@ namespace rqt_roah_devices
     roah_devices::DevicesState::ConstPtr status = rcv_.last ();
     roah_devices::Bool b;
     b.request.data = ! status->switch_3;
-    callService ("/devices/switch_3/set", b);
+    call_service ("/devices/switch_3/set", b);
     last_control_ = Time::now();
   }
 
@@ -188,7 +167,7 @@ namespace rqt_roah_devices
   {
     roah_devices::Percentage p;
     p.request.data = value;
-    callService ("/devices/dimmer/set", p);
+    call_service ("/devices/dimmer/set", p);
     last_control_ = Time::now();
   }
 
@@ -196,7 +175,7 @@ namespace rqt_roah_devices
   {
     roah_devices::Percentage p;
     p.request.data = value;
-    callService ("/devices/blinds/set", p);
+    call_service ("/devices/blinds/set", p);
     last_control_ = Time::now();
   }
 }

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIRS="src"
+DIRS="include src"
 SOURCE_FILES=`find -L $DIRS -iname "*\.[ch]pp" -or -iname "*\.[ch]" | grep -v "/\."`
 HEADER_FILES=`find -L $DIRS -iname "*\.hpp" -or -iname "*\.h" | grep -v "/\."`
 
