@@ -1,6 +1,9 @@
 <launch>
+  <arg name="smartif_host" default="192.168.1.56"/>
 
-  <include file="$(find roah_devices)/launch/run_real.launch"/>
+  <include file="$(find roah_devices)/launch/run_real.launch">
+    <arg name="smartif_host" value="$(arg smartif_host)"/>
+  </include>
 
   <node pkg="roah_devices" type="rqt_roah_devices" name="rqt_roah_devices" required="true"/>
 
