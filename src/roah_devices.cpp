@@ -349,6 +349,11 @@ class RoahDevices
             string arg1 = sync_read_string (socket_);
             string arg2 = sync_read_string (socket_);
             ROS_DEBUG_STREAM ("notifyChanges(" << (arg0 == 'N' ? "NEW" : arg0 == 'E' ? "EDIT" : arg0 == 'D' ? "DELETE" : "UNKNOWN") << ", \"" << arg1 << "\", \"" << arg2 << "\")");
+            if ( (arg0 == 'E')
+                 && (arg1 == BELL_ID)
+                 && (arg2 == "1")) {
+              bell_.ring();
+            }
           }
           break;
           default:
