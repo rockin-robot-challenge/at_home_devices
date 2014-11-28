@@ -20,6 +20,7 @@
 #ifndef __ROAH_DEVICES_UTILS_H__
 #define __ROAH_DEVICES_UTILS_H__
 
+#include <cstdlib>
 #include <sstream>
 #include <boost/date_time/posix_time/time_formatters.hpp>
 #include <boost/date_time/c_local_time_adjustor.hpp>
@@ -39,9 +40,14 @@ to_qstring (ros::Time const& time)
 inline QString
 to_qstring (ros::Duration const& duration)
 {
-  int mins = duration.sec / 60;
-  int secs = duration.sec % 60;
-  return (mins < 10 ? QString ("0") : QString()) + QString::number (mins) + ":" + (secs < 10 ? QString ("0") : QString()) + QString::number (secs);
+  int mins = std::abs (duration.sec / 60);
+  int secs = std::abs (duration.sec % 60);
+  return (duration < ros::Duration() ? QString ("-") : QString())
+         + (mins < 10 ? QString ("0") : QString())
+         + QString::number (mins)
+         + ":"
+         + (secs < 10 ? QString ("0") : QString())
+         + QString::number (secs);
 }
 
 
