@@ -63,6 +63,8 @@ include_directories(
 )
 
 add_subdirectory(gen/)
+add_dependencies(roah_devices_qt roah_devices_generate_messages_cpp)
+
 include_directories(
   ${INCLUDE_DIRS}
 )
