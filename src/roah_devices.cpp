@@ -294,7 +294,8 @@ class RoahDevices
 
     void
     set_int (string const& arg0,
-             int32_t arg1)
+             int32_t arg1,
+             double mul)
     {
       boost::lock_guard<boost::mutex> _ (write_mutex_);
       try {
@@ -302,10 +303,11 @@ class RoahDevices
           return;
         }
 
+        uint32_t arg1_val = arg1 * mul;
         sync_write_byte (socket_, 'I');
         sync_write_string (socket_, arg0);
-        sync_write_long (socket_, arg1);
-        ROS_DEBUG_STREAM ("setInt(\"" << arg0 << "\", " << arg1 << ")");
+        sync_write_long (socket_, arg1_val);
+        ROS_DEBUG_STREAM ("setInt(\"" << arg0 << "\", " << arg1_val << ")");
       }
       catch (...) {}
     }
@@ -408,23 +410,23 @@ class RoahDevices
       , switch_1_ (nh_,
                    "switch_1",
                    boost::bind (&RoahDevices::update, this),
-                   boost::bind (&RoahDevices::set_int, this, SWITCH_1_ID, _1))
+                   boost::bind (&RoahDevices::set_int, this, SWITCH_1_ID, _1, 1))
       , switch_2_ (nh_,
                    "switch_2",
                    boost::bind (&RoahDevices::update, this),
-                   boost::bind (&RoahDevices::set_int, this, SWITCH_2_ID, _1))
+                   boost::bind (&RoahDevices::set_int, this, SWITCH_2_ID, _1, 1))
       , switch_3_ (nh_,
                    "switch_3",
                    boost::bind (&RoahDevices::update, this),
-                   boost::bind (&RoahDevices::set_int, this, SWITCH_3_ID, _1))
+                   boost::bind (&RoahDevices::set_int, this, SWITCH_3_ID, _1, 1))
       , dimmer_ (nh_,
                  "dimmer",
                  boost::bind (&RoahDevices::update, this),
-                 boost::bind (&RoahDevices::set_int, this, DIMMER_ID, _1))
+                 boost::bind (&RoahDevices::set_int, this, DIMMER_ID, _1, 1))
       , blinds_ (nh_,
                  "blinds",
                  boost::bind (&RoahDevices::update, this),
-                 boost::bind (&RoahDevices::set_int, this, BLINDS_ID, _1))
+                 boost::bind (&RoahDevices::set_int, this, BLINDS_ID, _1, 100))
       , io_service_()
       , socket_ (io_service_)
       , thread_ (&RoahDevices::run_thread, this)
